@@ -25,8 +25,8 @@ from pdfminer.layout import LTTextContainer
 
 # LangChain imports
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import SentenceTransformerEmbeddings
+from langchain_chroma import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 
@@ -35,7 +35,7 @@ from langchain.prompts import PromptTemplate
 # -----------------------
 CHUNK_SIZE = 400
 CHUNK_OVERLAP = 50
-INDEX_DIR = Path("./rag_index_langchain")
+INDEX_DIR = Path("./chroma_store")
 INDEX_DIR.mkdir(exist_ok=True)
 COLLECTION_NAME = "cpp_book"
 
@@ -44,7 +44,7 @@ if not GOOGLE_API_KEY:
     raise RuntimeError("Set GOOGLE_API_KEY in your environment.")
 
 # Embeddings
-embedding_model = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+embedding_model = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
 # -----------------------
 # Chunking
@@ -109,7 +109,7 @@ def load_vectorstore():
 # -----------------------
 
 def build_qa_chain():
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.3)
+    llm = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.3)
 
     vectordb = load_vectorstore()
     retriever = vectordb.as_retriever(search_kwargs={"k": 5})
@@ -154,7 +154,7 @@ def main():
         ingest_pdf(args.pdf)
     elif args.query:
         qa_chain = build_qa_chain()
-        ans = qa_chain.run(args.query)
+        ans = qa_chain.invoke({"query": args.query})
         print("\n🤖 Answer:\n")
         print(ans)
     elif args.run_ui:
@@ -175,7 +175,7 @@ def run_streamlit_app():
         retriever = vectordb.as_retriever(search_kwargs={"k": top_k})
         qa_chain = build_qa_chain()
         with st.spinner("Generating answer..."):
-            ans = qa_chain.run(q)
+            ans = qa_chain.invoke({"query": q})
         st.markdown("**Answer:**")
         st.write(ans)
 
